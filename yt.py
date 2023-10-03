@@ -21,8 +21,12 @@ class App(customtkinter.CTk):
         self.selected = False
         self.selected_path = None
         self.button_play = False
+        self.song_title = None
+        self.timestamp = 0
+        self.new_time = 0
+
         self.title("Music Downloader")
-        self.geometry("900x350")
+        self.geometry("900x450")
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=0)
@@ -57,26 +61,49 @@ class App(customtkinter.CTk):
         self.player_frame = Frame(self, width=500, corner_radius=20)
         self.player_frame.configure(fg_color="#cce6d3", height=50)
         self.player_frame.grid(row=1, column=0,padx=10, pady=10, sticky='s')
-        self.button3 = customtkinter.CTkButton(master=self.player_frame, text='<<', command=self.reverse)
+
+        self.button3 = customtkinter.CTkButton(master=self.player_frame, text='<<', text_color="#000000",
+                                               font=customtkinter.CTkFont(size=12, weight="bold"), command=self.reverse)
         self.button3.grid(row=0, column=0, padx=(20, 10), pady=20, sticky='nswe')
-        self.button4 = customtkinter.CTkButton(master=self.player_frame, text='| |', command=self.stop)
+        self.button4 = customtkinter.CTkButton(master=self.player_frame, text='| |',text_color="#000000",
+                                               font=customtkinter.CTkFont(size=12, weight="bold"), command=self.stop)
         self.button4.grid(row=0, column=1, padx=10, pady=20, sticky='nswe')
-        self.button5 = customtkinter.CTkButton(master=self.player_frame, text='PLAY', command=self.play)
+        self.button5 = customtkinter.CTkButton(master=self.player_frame, text='PLAY',text_color="#000000",
+                                               font=customtkinter.CTkFont(size=12, weight="bold"), command=self.play)
         self.button5.grid(row=0, column=2, padx=10, pady=20, sticky='nswe')
-        self.button6 = customtkinter.CTkButton(master=self.player_frame, text='>>', command=self.next)
+        self.button6 = customtkinter.CTkButton(master=self.player_frame, text='>>',text_color="#000000",
+                                               font=customtkinter.CTkFont(size=12, weight="bold"), command=self.next)
         self.button6.grid(row=0, column=3, padx=(10, 20), pady=20, sticky='nswe')
 
         self.scroll = customtkinter.CTkScrollableFrame(self, label_text='Playlista', height=150, width=200, fg_color='#d2f7f5')
         self.scroll.grid(row=0, column=0, padx=10, pady=(10,0), sticky='e')
 
+        self.slider_progressbar_frame = customtkinter.CTkFrame(self, fg_color="transparent", width=50, height=150)
+        self.slider_progressbar_frame.grid(row=1, column=0, padx=(20, 0), pady=(20, 0), sticky="e")
+        self.slider = customtkinter.CTkSlider(self.slider_progressbar_frame, orientation="vertical", number_of_steps=100,
+                                            from_=0, to=100, height=100, command=self.volume)
+        self.slider.grid(row=0, column=0, rowspan=5, padx=(10, 40), pady=(10, 10), sticky="ns")
+
+    def volume(self, value):
+        print(self.slider.get())
+        new_val = value/100.0
+        mix.music.set_volume(new_val)
+
+
     def reverse(self):
-        mix.music.rewind()
+        if mix.music.get_busy():
+            mix.music.rewind()
+            self.timestamp = 0
+            mix.music.set_pos(0)
 
     def stop(self):
-        mix.music.pause()
+        if mix.music.get_busy():
+            mix.music.pause()
+            self.button4.configure(fg_color="#ff4d4d", text_color="#000000")
+        else:
+            mix.music.unpause()
+            self.button4.configure(fg_color="#2cc985")
 
-    def unpause(self):
-        mix.music.unpause()
 
     def play(self):
         self.button_play = True
@@ -84,15 +111,25 @@ class App(customtkinter.CTk):
         self.selected_path = os.getcwd()
         self.download()
         files = os.listdir(self.selected_path)
-        print(files[0])
-        mix.music.load(os.path.join(self.selected_path, files[0]))
-        mix.music.play()
+        # print(files[0])
+        # print(self.song_title)
+        for f in range(len( files)):
+            if files[f] == self.song_title:
+                print(self.song_title)
+                mix.music.load(os.path.join(self.selected_path, self.song_title))
+                mix.music.play()
+
         self.button_play = False
         os.chdir(os.path.dirname(os.getcwd()))
         print(os.getcwd())
 
     def next(self):
-        pass
+        if mix.music.get_busy():
+            self.timestamp += (mix.music.get_pos()/1000)+10
+            print(self.timestamp)
+            mix.music.rewind()
+            mix.music.set_pos(self.timestamp)
+
 
     def foldery(self):
         if self.selected == False:
@@ -144,6 +181,7 @@ class App(customtkinter.CTk):
             audio.write_audiofile(f'{output_path}/{info["title"]}.mp3')
             os.remove(video_path)
             ydl.download([link])
+
     def download(self):
         link = app.entry1.get()
         if self.selected_path is None:
@@ -158,18 +196,19 @@ class App(customtkinter.CTk):
             song = yt.streams.filter(file_extension='mp4', resolution=yt.streams.get_highest_resolution()).first()
             # print("Tytuł: ", yt.title)
             # print("Długość: ", yt.length)
-            file = song.download(output_path=self.selected_path)
-            mp3_file = 'audio.mp3'
-            video = VideoFileClip(file)
-            audioclip = video.audio
-            audioclip.write_audiofile(mp3_file)
-            audioclip.close()
-            video.close()
-
-            # base, ext = os.path.splitext(file)
-            # new_file = base + '.mp3'
-            # os.rename(file, new_file)
-            print(file)
+            file = song.download(output_path=self.selected_path, skip_existing=True)
+            # mp3_file = 'audio.mp3'
+            base, ext = os.path.splitext(file)
+            new_file = base + '.mp3'
+            self.song_title = yt.title + '.mp3'
+            if new_file not in os.listdir(os.getcwd()):
+                video = VideoFileClip(file)
+                audioclip = video.audio
+                audioclip.write_audiofile(new_file)
+                audioclip.close()
+                video.close()
+                os.remove(file)
+            # print(new_file)
             # self.convert(file, "audio.mp3")
 
             # copy2(new_file, os.path.join(os.getcwd(), 'temp_audio'))
