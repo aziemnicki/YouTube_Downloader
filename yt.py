@@ -1,3 +1,4 @@
+import pygame
 from pytube import YouTube
 import customtkinter
 from tkinter import filedialog, Tk
@@ -5,12 +6,25 @@ import pygame.mixer as mix
 import subprocess
 import youtube_dl
 from moviepy.editor import *
+from ctypes import cast, POINTER
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
+
+
+def get_system_volume():
+    devices = AudioUtilities.GetSpeakers()
+    interface = devices.Activate(
+        IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    volume = cast(interface, POINTER(IAudioEndpointVolume))
+    current_volume = volume.GetMasterVolumeLevelScalar()
+    return current_volume
 
 
 class Frame(customtkinter.CTkFrame):
     def __init__(self, master, width, corner_radius):
         super().__init__(master, width, corner_radius)
+
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -20,6 +34,9 @@ class App(customtkinter.CTk):
         self.button_play = False
         self.song_title = None
         self.timestamp = 0
+        self.queue=[]
+        # self.new_val = volume
+
 
 
         self.title("Music Downloader")
@@ -71,30 +88,33 @@ class App(customtkinter.CTk):
         self.player_frame.configure(fg_color="#cce6d3", height=50)
         self.player_frame.grid(row=2, column=0,padx=10, pady=10, sticky='s')
 
-        self.button3 = customtkinter.CTkButton(master=self.player_frame, text='<<', text_color="#000000",
+        self.button3 = customtkinter.CTkButton(master=self.player_frame, text='<<', text_color="#000000", width=100,
                                                font=customtkinter.CTkFont(size=12, weight="bold"), command=self.reverse)
-        self.button3.grid(row=0, column=0, padx=(20, 10), pady=20, sticky='nswe')
-        self.button4 = customtkinter.CTkButton(master=self.player_frame, text='| |',text_color="#000000",
+        self.button3.grid(row=0, column=0, padx=(20, 10), pady=50, sticky='nswe')
+        self.button4 = customtkinter.CTkButton(master=self.player_frame, text='| |',text_color="#000000", width=100,
                                                font=customtkinter.CTkFont(size=12, weight="bold"), command=self.stop)
-        self.button4.grid(row=0, column=1, padx=10, pady=20, sticky='nswe')
-        self.button5 = customtkinter.CTkButton(master=self.player_frame, text='PLAY',text_color="#000000",
+        self.button4.grid(row=0, column=1, padx=10, pady=50, sticky='nswe')
+        self.button5 = customtkinter.CTkButton(master=self.player_frame, text='PLAY',text_color="#000000", width=100,
                                                font=customtkinter.CTkFont(size=12, weight="bold"), command=self.play)
-        self.button5.grid(row=0, column=2, padx=10, pady=20, sticky='nswe')
-        self.button6 = customtkinter.CTkButton(master=self.player_frame, text='>>',text_color="#000000",
+        self.button5.grid(row=0, column=2, padx=10, pady=50, sticky='nswe')
+        self.button6 = customtkinter.CTkButton(master=self.player_frame, text='>>',text_color="#000000", width=100,
                                                font=customtkinter.CTkFont(size=12, weight="bold"), command=self.next)
-        self.button6.grid(row=0, column=3, padx=(10, 20), pady=20, sticky='nswe')
-
+        self.button6.grid(row=0, column=3, padx=10, pady=50, sticky='nswe')
+        self.button7 = customtkinter.CTkButton(master=self.player_frame, text='NEXT>>', text_color="#000000", width=100,
+                                               font=customtkinter.CTkFont(size=12, weight="bold"), command=self.next_song)
+        self.button7.grid(row=0, column=4, padx=(10, 20), pady=50, sticky='nswe')
 
         self.slider_progressbar_frame = customtkinter.CTkFrame(self, fg_color="transparent", width=50, height=150)
         self.slider_progressbar_frame.grid(row=2, column=0, padx=(20, 0), pady=(20, 0), sticky="e")
         self.slider = customtkinter.CTkSlider(self.player_frame, orientation="vertical", number_of_steps=100,
                                             from_=0, to=100, height=100, command=self.volume)
-        self.slider.grid(row=0, column=4, rowspan=5, padx=(10, 40), pady=(10, 10), sticky="ns")
+        self.slider.grid(row=0, column=5, rowspan=5, padx=(10, 40), pady=(10, 10), sticky="ns")
+        self.slider.set(volume*100)
 
     def volume(self, value):
         print(self.slider.get())
-        new_val = value/100.0
-        mix.music.set_volume(new_val)
+        self.new_val = value/100.0
+        mix.music.set_volume(self.new_val)
 
 
     def reverse(self):
@@ -122,7 +142,8 @@ class App(customtkinter.CTk):
         if self.button_play:
             mix.music.queue(files[0])
             print("Dodano do kolejki")
-            self.button_play = False
+            # self.button_play = False
+            self.queue.extend(files)
         else:
             self.button_play = True
             for f in range(len( files)):
@@ -140,6 +161,17 @@ class App(customtkinter.CTk):
             print(self.timestamp)
             mix.music.rewind()
             mix.music.set_pos(self.timestamp)
+
+    def next_song(self):
+        if mix.music.get_busy():
+            if self.queue:
+                next_song = self.queue[0]  # Pobierz następną piosenkę z kolejki
+                try:
+                    mix.music.load(os.path.join(self.selected_path, next_song))
+                    mix.music.play()
+                except pygame.error as e:
+                    print(e)
+                self.queue.pop(0)
 
 
     def foldery(self):
@@ -212,13 +244,16 @@ class App(customtkinter.CTk):
             base, ext = os.path.splitext(file)
             new_file = base + '.mp3'
             self.song_title = yt.title + '.mp3'
-            if new_file not in os.listdir(os.getcwd()):
-                video = VideoFileClip(file)
-                audioclip = video.audio
-                audioclip.write_audiofile(new_file)
-                audioclip.close()
-                video.close()
-                os.remove(file)
+            try:
+                if new_file not in os.listdir(os.getcwd()):
+                    video = VideoFileClip(file)
+                    audioclip = video.audio
+                    audioclip.write_audiofile(new_file)
+                    audioclip.close()
+                    video.close()
+                    os.remove(file)
+            except IOError as e:
+                print(e)
             # print(new_file)
             # self.convert(file, "audio.mp3")
 
@@ -244,6 +279,7 @@ if __name__ == "__main__":
     # os.chdir(main_path)
     # sound = mix.music.load('audio.mp3')
     # mix.music.play()
+    volume = get_system_volume()
     print('good')
     app = App()
     app.mainloop()
