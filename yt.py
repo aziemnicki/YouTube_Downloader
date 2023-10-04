@@ -35,7 +35,6 @@ class App(customtkinter.CTk):
         self.song_title = None
         self.timestamp = 0
         self.queue=[]
-        # self.new_val = volume
 
 
 
@@ -137,7 +136,7 @@ class App(customtkinter.CTk):
         self.selected_path = os.getcwd()
         self.download()
         files = os.listdir(self.selected_path)
-        # print(files[0])
+        print(files)
         # print(self.song_title)
         if self.button_play:
             mix.music.queue(files[0])
@@ -182,48 +181,6 @@ class App(customtkinter.CTk):
             self.selected_path = main_path
         return self.selected_path
 
-    def convert(self, input, output):
-        print(input)
-        ffmpeg_cmd = [
-        "ffmpeg",
-        "-i", input,
-        "-vn",
-        "-acodec", "libmp3lame",
-        "-ab", "192k",
-        "-ar", "44100",
-        "-y",
-        output
-        ]
-        try:
-            subprocess.run(ffmpeg_cmd, check=True)
-        except subprocess.CalledProcessError as e:
-            print("Conversion Failed")
-
-    def download_and_convert(self,link,  output_path):
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': f'{output_path}/%(title)s.%(ext)s',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-        }
-        option = {'final_ext': 'mp3',
-                  'format': 'bestaudio/best',
-                  'postprocessors': [{'key': 'FFmpegExtractAudio',
-                                      'nopostoverwrites': False,
-                                      'preferredcodec': 'mp3',
-                                      'preferredquality': '5'}],
-                  'outtmpl': 'temp_audio/%(title)s.%(ext)s',
-                  'ffmpeg_location': os.getcwd()}
-        with youtube_dl.YoutubeDL(option) as ydl:
-            info = ydl.extract_info(link, download=True)
-            video_path = ydl.prepare_filename(info)
-            audio = AudioFileClip(video_path)
-            audio.write_audiofile(f'{output_path}/{info["title"]}.mp3')
-            os.remove(video_path)
-            ydl.download([link])
 
     def download(self):
         link = app.entry1.get()
@@ -283,4 +240,10 @@ if __name__ == "__main__":
     print('good')
     app = App()
     app.mainloop()
-
+    mix.music.unload()
+    os.chdir(os.path.join(os.getcwd(), 'temp_audio'))
+    path = os.getcwd()
+    files = os.listdir(path)
+    for f in files:
+        os.remove(f)
+    print("close")
