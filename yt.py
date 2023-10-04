@@ -5,8 +5,6 @@ from pytube import YouTube
 import customtkinter
 from tkinter import filedialog, Tk
 import pygame.mixer as mix
-import subprocess
-import youtube_dl
 from moviepy.editor import *
 from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
