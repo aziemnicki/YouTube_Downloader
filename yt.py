@@ -1,14 +1,11 @@
 from pytube import YouTube
-import os
 import customtkinter
 from tkinter import filedialog, Tk
 import pygame.mixer as mix
 import subprocess
 import youtube_dl
 from moviepy.editor import *
-from pydub import AudioSegment
-from shutil import copy2
-from sys import argv
+
 
 
 class Frame(customtkinter.CTkFrame):
@@ -23,7 +20,7 @@ class App(customtkinter.CTk):
         self.button_play = False
         self.song_title = None
         self.timestamp = 0
-        self.new_time = 0
+
 
         self.title("Music Downloader")
         self.geometry("900x450")
@@ -116,20 +113,24 @@ class App(customtkinter.CTk):
 
 
     def play(self):
-        self.button_play = True
         os.chdir(os.path.join(os.getcwd(), 'temp_audio'))
         self.selected_path = os.getcwd()
         self.download()
         files = os.listdir(self.selected_path)
         # print(files[0])
         # print(self.song_title)
-        for f in range(len( files)):
-            if files[f] == self.song_title:
-                print(self.song_title)
-                mix.music.load(os.path.join(self.selected_path, self.song_title))
-                mix.music.play()
+        if self.button_play:
+            mix.music.queue(files[0])
+            print("Dodano do kolejki")
+            self.button_play = False
+        else:
+            self.button_play = True
+            for f in range(len( files)):
+                if files[f] == self.song_title:
+                    print(self.song_title)
+                    mix.music.load(os.path.join(self.selected_path, self.song_title))
+                    mix.music.play()
 
-        self.button_play = False
         os.chdir(os.path.dirname(os.getcwd()))
         print(os.getcwd())
 
@@ -223,6 +224,7 @@ class App(customtkinter.CTk):
 
             # copy2(new_file, os.path.join(os.getcwd(), 'temp_audio'))
             print('Pobrano ', yt.title)
+            app.entry1.delete(0, "end")
 
             # yd=yt.streams.get_highest_resolution()
             # yd.download('.Download')
