@@ -1,3 +1,5 @@
+import time
+import threading
 import pygame
 from pytube import YouTube
 import customtkinter
@@ -70,10 +72,12 @@ class App(customtkinter.CTk):
         self.button2 = customtkinter.CTkButton(master=self.frame, text="Pobierz", command=self.download, width=100)
         self.button2.grid(row=2, column=0, padx=150, pady=12, sticky='nsew')
         # self.button2.pack(pady=12, padx=10, side="bottom")
+        self.checkbox_1 = customtkinter.CTkCheckBox(master=self.frame, state="disabled", text="")
+        self.checkbox_1.grid(row=2, column=1, pady=(20, 0), padx=20, sticky="n")
 
         self.scroll = customtkinter.CTkScrollableFrame(self, label_text='Playlista', height=150, width=200, fg_color='#d2f7f5')
         self.scroll.grid(row=0, column=0, padx=10, pady=(10,0), sticky='e')
-
+        self.scroll.grid_columnconfigure(0, weight=1)
 
         self.label_frame = customtkinter.CTkFrame(self, )
         self.label_frame.grid(row=1, column=0, padx=15, pady=(10, 0), sticky="ew")
@@ -143,6 +147,12 @@ class App(customtkinter.CTk):
             print("Dodano do kolejki")
             # self.button_play = False
             self.queue.extend(files)
+            self.labels = []
+            for i in range(len(self.queue)):
+                label = customtkinter.CTkLabel(master=self.scroll, text="")
+                label.grid(row=i, column=0, padx=5, pady=5, )
+                label = customtkinter.CTkLabel(master=self.scroll, text=f"{self.queue[i]}")
+                label.grid(row=i, column=0, padx=5, pady=5, )
         else:
             self.button_play = True
             for f in range(len( files)):
@@ -150,6 +160,8 @@ class App(customtkinter.CTk):
                     print(self.song_title)
                     mix.music.load(os.path.join(self.selected_path, self.song_title))
                     mix.music.play()
+            label = customtkinter.CTkLabel(master=self.scroll, text=f"{self.song_title}")
+            label.grid(row=0, column=0, padx=5, pady=5, )
 
         os.chdir(os.path.dirname(os.getcwd()))
         print(os.getcwd())
@@ -164,7 +176,8 @@ class App(customtkinter.CTk):
     def next_song(self):
         if mix.music.get_busy():
             if self.queue:
-                next_song = self.queue[0]  # Pobierz następną piosenkę z kolejki
+                next_song = self.queue[0]
+                # Pobierz następną piosenkę z kolejki
                 try:
                     mix.music.load(os.path.join(self.selected_path, next_song))
                     mix.music.play()
@@ -216,13 +229,21 @@ class App(customtkinter.CTk):
 
             # copy2(new_file, os.path.join(os.getcwd(), 'temp_audio'))
             print('Pobrano ', yt.title)
+            self.checkbox_1.configure(text="Pobrano", font=("Roboto", 12))
+            self.checkbox_1.select()
             app.entry1.delete(0, "end")
+            thread = threading.Thread(target=self.wait)
+            thread.start()
+
 
             # yd=yt.streams.get_highest_resolution()
             # yd.download('.Download')
             # self.download_and_convert(link, self.selected_path)
 
-
+    def wait(self):
+        time.sleep(3)
+        self.checkbox_1.configure(text="", font=("Roboto", 12))
+        self.checkbox_1.deselect()
 
 
 if __name__ == "__main__":
