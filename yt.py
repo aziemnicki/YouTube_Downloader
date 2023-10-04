@@ -28,11 +28,12 @@ class App(customtkinter.CTk):
         self.title("Music Downloader")
         self.geometry("900x450")
         self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=0)
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=0)
 
-        self.frame = Frame(self, width=500, corner_radius=10)
-        self.frame.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="nsew")
+        self.frame = customtkinter.CTkFrame(self, width=500, height=300, corner_radius=10)
+        self.frame.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="w")
         # self.frame.pack(pady=20, padx=10, fill="both", expand=True)
 
         self.label = customtkinter.CTkLabel(self.frame,  text="Wklej link do piosenki na YouTube", font=("Roboto", 24))
@@ -57,10 +58,21 @@ class App(customtkinter.CTk):
         self.button2.grid(row=2, column=0, padx=150, pady=12, sticky='nsew')
         # self.button2.pack(pady=12, padx=10, side="bottom")
 
+        self.scroll = customtkinter.CTkScrollableFrame(self, label_text='Playlista', height=150, width=200, fg_color='#d2f7f5')
+        self.scroll.grid(row=0, column=0, padx=10, pady=(10,0), sticky='e')
+
+
+        self.label_frame = customtkinter.CTkFrame(self, )
+        self.label_frame.grid(row=1, column=0, padx=15, pady=(10, 0), sticky="ew")
+        self.label4 = customtkinter.CTkLabel(self.label_frame,
+                                             text="Odtwarzacz muzyki, wklej link aby odsłuchać i sprawdzić",
+                                             font=("Roboto", 16))
+        self.label4.grid(row=0, column=0, padx=(200,0), pady=5, sticky='e')
+
 
         self.player_frame = Frame(self, width=500, corner_radius=20)
         self.player_frame.configure(fg_color="#cce6d3", height=50)
-        self.player_frame.grid(row=1, column=0,padx=10, pady=10, sticky='s')
+        self.player_frame.grid(row=2, column=0,padx=10, pady=10, sticky='s')
 
         self.button3 = customtkinter.CTkButton(master=self.player_frame, text='<<', text_color="#000000",
                                                font=customtkinter.CTkFont(size=12, weight="bold"), command=self.reverse)
@@ -75,14 +87,12 @@ class App(customtkinter.CTk):
                                                font=customtkinter.CTkFont(size=12, weight="bold"), command=self.next)
         self.button6.grid(row=0, column=3, padx=(10, 20), pady=20, sticky='nswe')
 
-        self.scroll = customtkinter.CTkScrollableFrame(self, label_text='Playlista', height=150, width=200, fg_color='#d2f7f5')
-        self.scroll.grid(row=0, column=0, padx=10, pady=(10,0), sticky='e')
 
         self.slider_progressbar_frame = customtkinter.CTkFrame(self, fg_color="transparent", width=50, height=150)
-        self.slider_progressbar_frame.grid(row=1, column=0, padx=(20, 0), pady=(20, 0), sticky="e")
-        self.slider = customtkinter.CTkSlider(self.slider_progressbar_frame, orientation="vertical", number_of_steps=100,
+        self.slider_progressbar_frame.grid(row=2, column=0, padx=(20, 0), pady=(20, 0), sticky="e")
+        self.slider = customtkinter.CTkSlider(self.player_frame, orientation="vertical", number_of_steps=100,
                                             from_=0, to=100, height=100, command=self.volume)
-        self.slider.grid(row=0, column=0, rowspan=5, padx=(10, 40), pady=(10, 10), sticky="ns")
+        self.slider.grid(row=0, column=4, rowspan=5, padx=(10, 40), pady=(10, 10), sticky="ns")
 
     def volume(self, value):
         print(self.slider.get())
