@@ -1,1 +1,0 @@
-This empty directory is needed for temporary audio files downloaded for playlist.
