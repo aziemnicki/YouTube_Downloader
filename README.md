@@ -4,7 +4,7 @@ A simple and user-friendly application that allows you to download audio from Yo
 
 ## 🌐 Online Version
 
-You can use the application online at: [https://your-deployment-url.com](https://your-deployment-url.com)
+You can use the application online at: [https://youtubesongdownloader.streamlit.app](https://youtubesongdownloader.streamlit.app)
 
 ## 🖥️ Local Installation
 
@@ -14,6 +14,7 @@ You can use the application online at: [https://your-deployment-url.com](https:/
 - pip or uv (Python package installer)
 - yt-dlp (YouTube downloader)
 - streamlit (Python web framework)
+- ffmpeg (required for video processing)
 
 ### Installation Steps
 
