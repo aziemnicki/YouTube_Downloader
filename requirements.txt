@@ -1,6 +1,0 @@
-customtkinter>=5.2.0
-moviepy>=1.0.3
-pycaw>=20230407
-pygame>=2.4.0
-yt-dlp>=2023.3.4
-comtypes>=1.2.0
