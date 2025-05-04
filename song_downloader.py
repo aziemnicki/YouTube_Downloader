@@ -64,8 +64,8 @@ def get_video_info(link):
             "quiet": True,
             "extract_flat": "discard_key",
             # "force_generic_extractor": True,
-            "geo_bypass": True,
-            "force_ipv4": True,
+            # "geo_bypass": True,
+            # "force_ipv4": True,
         }
         with st.spinner(get_translations(st.session_state.language)["downloading"]):
             with yt_dlp.YoutubeDL(ydl_opts_info) as ydl:
@@ -131,9 +131,9 @@ def download_audio(link, title):
         "progress_hooks": [progress_hook],
         "verbose": True,  # Suppress verbose output from yt-dlp itself
         # "no_warnings": True,  # Suppress warnings
-        "geo_bypass": True,  # Attempt to bypass geographic restrictions
+        # "geo_bypass": True,  # Attempt to bypass geographic restrictions
         # "force_generic_extractor": True,
-        "force_ipv4": True,
+        # "force_ipv4": True,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts_download) as ydl:
