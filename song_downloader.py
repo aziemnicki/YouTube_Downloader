@@ -63,7 +63,9 @@ def get_video_info(link):
         ydl_opts_info = {
             "quiet": True,
             "extract_flat": "discard_key",
-            "force_generic_extractor": True,  # Added to handle potential extractor issues
+            "force_generic_extractor": True,
+            "source_address": "0.0.0.0",
+            "geo_bypass": True,
         }
         with st.spinner(get_translations(st.session_state.language)["downloading"]):
             with yt_dlp.YoutubeDL(ydl_opts_info) as ydl:
@@ -130,6 +132,8 @@ def download_audio(link, title):
         "quiet": True,  # Suppress verbose output from yt-dlp itself
         "no_warnings": True,  # Suppress warnings
         "geo_bypass": True,  # Attempt to bypass geographic restrictions
+        "source_address": "0.0.0.0",
+        "force_generic_extractor": True,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts_download) as ydl:
