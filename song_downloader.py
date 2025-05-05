@@ -30,6 +30,8 @@ def get_translations(lang):
             "step1": "1️⃣ Wklej link do wideo YouTube w pole tekstowe",
             "step2": "2️⃣ Kliknij przycisk 'Wczytaj wideo i poczekaj kilka sekund'",
             "step3": "3️⃣ Kliknij przycisk pobrania, aby pobrać plik audio",
+            "copy_link": "Kopiuj link - Ctrl+C",
+            "paste_link": "Wklej link - Ctrl+V",
         },
         "en": {
             "title": "🎵 YouTube Audio Downloader 🎵",
@@ -53,6 +55,8 @@ def get_translations(lang):
             "step1": "1️⃣ Paste YouTube video link in the text field",
             "step2": "2️⃣ Click the 'Load Video' button and wait few seconds",
             "step3": "3️⃣ Click download button to download the audio file",
+            "copy_link": "Copy link - Ctrl+C",
+            "paste_link": "Paste link - Ctrl+V",
         },
     }[lang]
 
@@ -69,9 +73,10 @@ def get_video_info(link):
                     "po_token": f"web.gvs+{po_token}",
                 }
             },
-            # "force_generic_extractor": True,
-            # "geo_bypass": True,
-            # "force_ipv4": True,
+            "force_generic_extractor": True,
+            "geo_bypass": True,
+            "force_ipv4": True,
+            "source_address": "0.0.0.0",
         }
         with st.spinner(get_translations(st.session_state.language)["downloading"]):
             with yt_dlp.YoutubeDL(ydl_opts_info) as ydl:
@@ -143,9 +148,10 @@ def download_audio(link, title):
         "progress_hooks": [progress_hook],
         "verbose": True,  # Suppress verbose output from yt-dlp itself
         # "no_warnings": True,  # Suppress warnings
-        # "geo_bypass": True,  # Attempt to bypass geographic restrictions
-        # "force_generic_extractor": True,
-        # "force_ipv4": True,
+        "geo_bypass": True,  # Attempt to bypass geographic restrictions
+        "force_generic_extractor": True,
+        "force_ipv4": True,
+        "source_address": "0.0.0.0",
     }
 
     with yt_dlp.YoutubeDL(ydl_opts_download) as ydl:
@@ -216,6 +222,9 @@ def main():
     st.sidebar.markdown(get_translations(current_lang)["step1"])
     st.sidebar.markdown(get_translations(current_lang)["step2"])
     st.sidebar.markdown(get_translations(current_lang)["step3"])
+    st.sidebar.divider()
+    st.sidebar.markdown(get_translations(current_lang)["copy_link"])
+    st.sidebar.markdown(get_translations(current_lang)["paste_link"])
 
     st.title(get_translations(st.session_state.language)["title"])
 
