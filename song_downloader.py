@@ -73,7 +73,7 @@ def get_video_info(link):
                     "po_token": f"web.gvs+{po_token}",
                 }
             },
-            "force_generic_extractor": True,
+            # "force_generic_extractor": True,
             "geo_bypass": True,
             "force_ipv4": True,
             "source_address": "0.0.0.0",
@@ -149,7 +149,7 @@ def download_audio(link, title):
         "verbose": True,  # Suppress verbose output from yt-dlp itself
         # "no_warnings": True,  # Suppress warnings
         "geo_bypass": True,  # Attempt to bypass geographic restrictions
-        "force_generic_extractor": True,
+        # "force_generic_extractor": True,
         "force_ipv4": True,
         "source_address": "0.0.0.0",
     }
