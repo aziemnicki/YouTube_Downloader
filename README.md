@@ -27,16 +27,9 @@ cd YouTube_Downloader
 2. Install Python Dependencies
 
 All dependencies are managed via `pyproject.toml` and `uv.lock`.
-
+To create a virtual environment and install dependencies:
 ```bash
-# use pyproject.toml directly:
-uv pip install -r pyproject.toml
-```
-
-Or simply:
-```bash
-uv venv .venv
-uv pip install -e .
+uv sync
 ```
 
 ---
