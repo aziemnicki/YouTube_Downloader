@@ -64,15 +64,16 @@ def get_translations(lang):
 def get_video_info(link):
     try:
         # po_token = st.secrets["po_token"]
+        po_token = os.getenv("po_token")
         # Get video info first to get the title and check if link is valid
         ydl_opts_info = {
             "quiet": True,
             "extract_flat": "discard_key",
-            # "extractor-args": {
-            #     "youtube": {
-            #         "po_token": f"web.gvs+{po_token}",
-            #     }
-            # },
+            "extractor-args": {
+                "youtube": {
+                    "po_token": f"web.gvs+{po_token}",
+                }
+            },
             # "force_generic_extractor": True,
             "geo_bypass": True,
             "force_ipv4": True,
@@ -96,6 +97,8 @@ def get_video_info(link):
 # Function to download YouTube audio
 def download_audio(link, title):
     # po_token = st.secrets["po_token"]
+    po_token = os.getenv("po_token")
+    print(po_token)
     """Downloads audio from a YouTube link to a temporary file and returns the path and title."""
     temp_dir = tempfile.mkdtemp()
     output_template = os.path.join(temp_dir, "%(title)s.%(ext)s")
@@ -140,11 +143,11 @@ def download_audio(link, title):
                 "preferredcodec": "mp3",  # Prefer mp3 codec
             }
         ],
-        # 'extractor-args': {
-        #     'youtube': {
-        #         'po_token': f'web.gvs+{po_token}'
-        #     }
-        # },
+        'extractor-args': {
+            'youtube': {
+                'po_token': f'web.gvs+{po_token}'
+            }
+        },
         "progress_hooks": [progress_hook],
         "verbose": True,  # Suppress verbose output from yt-dlp itself
         # "no_warnings": True,  # Suppress warnings
