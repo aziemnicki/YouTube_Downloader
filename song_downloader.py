@@ -1,224 +1,196 @@
 import streamlit as st
-import os
 import yt_dlp
 import tempfile
 import shutil
+import os
 
+# -----------------------------------------------------------------------------
+# 1. KONFIGURACJA I TŁUMACZENIA
+# -----------------------------------------------------------------------------
 
-# Language translations
 def get_translations(lang):
+    """Zwraca słownik tłumaczeń w zależności od wybranego języka."""
     return {
         "pl": {
             "title": "🎵 Pobierz swoją piosenkę z YouTube 🎵",
             "download_audio": "📥 Pobierz Audio",
-            "youtube_link": "YouTube Link",
-            "placeholder": "Wklej link do wideo na YouTube",
-            "help": "Wklej link do wideo na YouTube",
-            "download_audio_btn": "📥 Pobierz Audio",
+            "youtube_link": "Link do YouTube",
+            "placeholder": "Wklej link do wideo tutaj...",
+            "help": "Obsługiwane są tylko linki do wideo",
+            "download_audio_btn": "📥 Pobierz plik",
             "language": "🌐 Język",
             "english": "🇬🇧 Angielski",
             "polish": "🇵🇱 Polski",
-            "downloading": "🔄 Wczytywanie informacji o wideo:",
-            "download_complete": "✅ Wczytywanie:",
-            "video_info_error": "❌ Błąd pobierania tytułu:",
-            "no_video_found": "🔍 Nie znaleziono pliku audio",
-            "success": "🎉 Gotowe do pobrania!",
-            "load_video_btn": "🔄 Wczytaj wideo do pobrania",
-            "cleaning_up": "🗑️ Wyczyść poprzednio pobrane...",
+            "downloading": "🔄 Przetwarzanie...",
+            "download_complete": "✅ Gotowe:",
+            "video_info_error": "❌ Nie udało się pobrać informacji o wideo:",
+            "no_video_found": "🔍 Nie znaleziono pliku wyjściowego",
+            "success": "🎉 Plik gotowy do pobrania!",
+            "load_video_btn": "🔄 Wczytaj wideo",
+            "cleaning_up": "🗑️ Wyczyść pliki tymczasowe",
             "how_to_use": "❓ Jak używać",
-            "description": "🎵 Prosta aplikacja do pobierania audio z YouTube. Wystarczą 3 proste kroki! 🎵",
-            "step1": "1️⃣ Wklej link do wideo YouTube w pole tekstowe",
-            "step2": "2️⃣ Kliknij przycisk 'Wczytaj wideo i poczekaj kilka sekund'",
-            "step3": "3️⃣ Kliknij przycisk pobrania, aby pobrać plik audio",
-            "copy_link": "Kopiuj link - Ctrl+C",
-            "paste_link": "Wklej link - Ctrl+V",
+            "description": "🎵 Prosta aplikacja do pobierania muzyki z YouTube w formacie MP3. 🎵",
+            "step1": "1️⃣ Wklej link do wideo w pole tekstowe.",
+            "step2": "2️⃣ Kliknij 'Wczytaj wideo' i sprawdź podgląd.",
+            "step3": "3️⃣ Kliknij 'Pobierz plik', aby zapisać MP3 na dysku.",
+            "copy_link": "💡 Skrót: Kopiuj link - Ctrl+C",
+            "paste_link": "💡 Skrót: Wklej link - Ctrl+V",
+            "ffmpeg_error": "⚠️ Błąd: Nie wykryto FFmpeg. Upewnij się, że jest zainstalowany w systemie."
         },
         "en": {
             "title": "🎵 YouTube Audio Downloader 🎵",
             "download_audio": "📥 Download Audio",
             "youtube_link": "YouTube Link",
-            "placeholder": "Paste YouTube video link here",
+            "placeholder": "Paste YouTube video link here...",
             "help": "Only video links are supported",
-            "download_audio_btn": "📥 Download Audio",
+            "download_audio_btn": "📥 Download File",
             "language": "🌐 Language",
             "english": "🇬🇧 English",
             "polish": "🇵🇱 Polish",
-            "downloading": "🔄 Fetching video info:",
-            "download_complete": "✅ Download complete:",
-            "video_info_error": "❌ Download title error:",
-            "no_video_found": "🔍 Audio file not found",
-            "success": "🎉 Download completed successfully!",
-            "load_video_btn": "🔄 Load Video to download",
-            "cleaning_up": "🗑️ Cleaning up previous download...",
+            "downloading": "🔄 Processing...",
+            "download_complete": "✅ Complete:",
+            "video_info_error": "❌ Failed to fetch video info:",
+            "no_video_found": "🔍 Output file not found",
+            "success": "🎉 File ready for download!",
+            "load_video_btn": "🔄 Load Video",
+            "cleaning_up": "🗑️ Clean temp files",
             "how_to_use": "❓ How to use",
-            "description": "🎵 Simple YouTube audio downloader. Just 3 easy steps! 🎵",
-            "step1": "1️⃣ Paste YouTube video link in the text field",
-            "step2": "2️⃣ Click the 'Load Video' button and wait few seconds",
-            "step3": "3️⃣ Click download button to download the audio file",
-            "copy_link": "Copy link - Ctrl+C",
-            "paste_link": "Paste link - Ctrl+V",
+            "description": "🎵 Simple app to download YouTube audio as MP3. 🎵",
+            "step1": "1️⃣ Paste the YouTube link in the text box.",
+            "step2": "2️⃣ Click 'Load Video' and check the preview.",
+            "step3": "3️⃣ Click 'Download File' to save the MP3.",
+            "copy_link": "💡 Hint: Copy link - Ctrl+C",
+            "paste_link": "💡 Hint: Paste link - Ctrl+V",
+            "ffmpeg_error": "⚠️ Error: FFmpeg not found. Please ensure it is installed."
         },
     }[lang]
 
+# -----------------------------------------------------------------------------
+# 2. FUNKCJE POMOCNICZE (BACKEND)
+# -----------------------------------------------------------------------------
 
-def get_video_info(link):
-    try:
-        # po_token = st.secrets["po_token"]
-        po_token = os.getenv("po_token")
-        # Get video info first to get the title and check if link is valid
-        ydl_opts_info = {
-            "quiet": True,
-            "extract_flat": "discard_key",
-            "extractor-args": {
-                "youtube": {
-                    "po_token": f"web.gvs+{po_token}",
-                }
-            },
-            # "force_generic_extractor": True,
-            "geo_bypass": True,
-            "force_ipv4": True,
-            "source_address": "0.0.0.0",
-        }
-        with st.spinner(get_translations(st.session_state.language)["downloading"]):
-            with yt_dlp.YoutubeDL(ydl_opts_info) as ydl:
-                info = ydl.extract_info(link, download=False)
-                title = info.get("title", "downloaded_audio")
-            # Display video preview
-            st.video(link, format="video/youtube")
-
-        return title
-    except yt_dlp.utils.DownloadError as e:
-        st.error(
-            f"{get_translations(st.session_state.language)['video_info_error']} {e}"
-        )
-        return None
-
-
-# Function to download YouTube audio
-def download_audio(link, title):
-    # po_token = st.secrets["po_token"]
-    po_token = os.getenv("po_token")
-    print(po_token)
-    """Downloads audio from a YouTube link to a temporary file and returns the path and title."""
-    temp_dir = tempfile.mkdtemp()
-    output_template = os.path.join(temp_dir, "%(title)s.%(ext)s")
-
-    # Initialize progress bar
-    progress_bar = st.progress(
-        0, text=f"{get_translations(st.session_state.language)['downloading']}..."
-    )
-
-    # Define progress hook
-    def progress_hook(d):
-        if d["status"] == "downloading":
-            # Get progress percentage
-            progress_str = d.get("_percent_str", "0%")
-            # Remove ANSI escape codes
-            progress_str = "".join(c for c in progress_str if c.isdigit() or c == ".")
-            try:
-                progress = float(progress_str)
-                # Normalize progress to be between 0 and 1
-                progress = min(max(progress / 100, 0), 1)
-                progress_bar.progress(
-                    progress,
-                    text=f"{get_translations(st.session_state.language)['downloading']} {d.get('info_dict', {}).get('title', '...') if 'info_dict' in d else ''} - {progress * 100:.1f}%",
-                )
-            except (ValueError, TypeError):
-                progress_bar.progress(
-                    0,
-                    text=f"{get_translations(st.session_state.language)['downloading']} {d.get('info_dict', {}).get('title', '...') if 'info_dict' in d else ''} - 0.0%",
-                )
-        elif d["status"] == "finished":
-            progress_bar.progress(
-                1.0,
-                text=f"{get_translations(st.session_state.language)['download_complete']} {d.get('info_dict', {}).get('title', '...') if 'info_dict' in d else ''}",
-            )
-
-    ydl_opts_download = {
-        "format": "bestaudio/best",  # Get the best audio stream in m4a format
-        "outtmpl": output_template,  # Specify the output path template
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",  # Use FFmpeg to extract audio
-                "preferredcodec": "mp3",  # Prefer mp3 codec
-            }
-        ],
-        'extractor-args': {
-            'youtube': {
-                'po_token': f'web.gvs+{po_token}'
+def get_common_opts():
+    """
+    Zwraca wspólne ustawienia dla yt-dlp.
+    Kluczowe naprawy błędów SSAP i 403 Forbidden znajdują się tutaj.
+    """
+    return {
+        "quiet": True,
+        "geo_bypass": True,
+        "nocheckcertificate": True,
+        # NAPRAWA BŁĘDU SSAP / SIGNATURE EXTRACTION:
+        # Udajemy klienta Android, który ma lżejsze zabezpieczenia niż wersja Web
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios"],
+                "player_skip": ["web", "tv"],
             }
         },
-        "progress_hooks": [progress_hook],
-        "verbose": True,  # Suppress verbose output from yt-dlp itself
-        # "no_warnings": True,  # Suppress warnings
-        "geo_bypass": True,  # Attempt to bypass geographic restrictions
-        # "force_generic_extractor": True,
-        "force_ipv4": True,
-        "source_address": "0.0.0.0",
+        # Udawanie zwykłej przeglądarki w nagłówkach HTTP
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        }
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts_download) as ydl:
-        ydl.download([link])
+def get_video_info(link):
+    """Pobiera tytuł i wyświetla podgląd wideo."""
+    ydl_opts = get_common_opts()
+    # Dodatkowe opcje tylko dla pobierania info (bez pliku)
+    ydl_opts.update({
+        "extract_flat": "discard_key", # Szybsze pobieranie info
+    })
 
-    # Find the downloaded file in the temporary directory
-    downloaded_file = None
-    # List files in the temporary directory
-    files_in_temp_dir = os.listdir(temp_dir)
-    common_audio_extensions = (
-        ".m4a",
-        ".webm",
-        ".mp3",
-    )
+    try:
+        with st.spinner(get_translations(st.session_state.language)["downloading"]):
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(link, download=False)
+                title = info.get("title", "Audio")
+                
+                # Wyświetl podgląd wideo
+                st.video(link, format="video/youtube")
+                return title
+    except Exception as e:
+        st.error(f"{get_translations(st.session_state.language)['video_info_error']} {str(e)}")
+        return None
 
-    # Find the most recently modified file with a common audio extension
-    if files_in_temp_dir:
-        audio_files = [
-            f for f in files_in_temp_dir if f.lower().endswith(common_audio_extensions)
-        ]
-        if audio_files:
-            # Sort by modification time (most recent first)
-            audio_files.sort(
-                key=lambda x: os.path.getmtime(os.path.join(temp_dir, x)), reverse=True
-            )
-            downloaded_file = os.path.join(temp_dir, audio_files[0])
+def download_audio(link):
+    """Pobiera audio, konwertuje na mp3 i zwraca ścieżkę."""
+    temp_dir = tempfile.mkdtemp()
+    output_template = os.path.join(temp_dir, "%(title)s.%(ext)s")
+    
+    # Inicjalizacja paska postępu
+    progress_bar = st.progress(0, text=f"{get_translations(st.session_state.language)['downloading']}...")
 
-    if downloaded_file and os.path.exists(downloaded_file):
-        st.success(get_translations(st.session_state.language)["success"])
-        return downloaded_file, title
-    else:
-        # If the file wasn't found, it's a potential issue with yt-dlp output or filename
-        st.error(
-            f"{get_translations(st.session_state.language)['no_video_found']}. Expected file with extensions {common_audio_extensions}. Files found: {files_in_temp_dir}"
-        )
-        # Clean up the temporary directory if file not found
-        if temp_dir and os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+    def progress_hook(d):
+        if d["status"] == "downloading":
+            p_str = d.get("_percent_str", "0%").replace("%", "")
+            try:
+                val = float(p_str) / 100
+                progress_bar.progress(min(val, 1.0), text=f"⏳ {d.get('_percent_str', '')}")
+            except ValueError:
+                pass
+        elif d["status"] == "finished":
+            progress_bar.progress(1.0, text=get_translations(st.session_state.language)['download_complete'])
+
+    # Opcje pobierania
+    ydl_opts = get_common_opts()
+    ydl_opts.update({
+        "format": "bestaudio/best",
+        "outtmpl": output_template,
+        "progress_hooks": [progress_hook],
+        "postprocessors": [{
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "mp3",
+            "preferredquality": "192",
+        }],
+    })
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([link])
+    except Exception as e:
+        st.error(f"Error: {e}")
+        shutil.rmtree(temp_dir, ignore_errors=True)
         return None, None
 
+    # Szukanie pobranego pliku
+    try:
+        files = os.listdir(temp_dir)
+        # Szukamy mp3 (bo taki kodek wymusiliśmy) lub innych audio
+        target_files = [f for f in files if f.endswith(('.mp3', '.m4a', '.webm'))]
+        
+        if target_files:
+            # Sortujemy po dacie, bierzemy najnowszy
+            target_files.sort(key=lambda x: os.path.getmtime(os.path.join(temp_dir, x)), reverse=True)
+            final_path = os.path.join(temp_dir, target_files[0])
+            return final_path, target_files[0]
+        else:
+            st.error(get_translations(st.session_state.language)["no_video_found"])
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return None, None
+    except Exception:
+        return None, None
+
+# -----------------------------------------------------------------------------
+# 3. INTERFEJS UŻYTKOWNIKA (FRONTEND)
+# -----------------------------------------------------------------------------
 
 def main():
-    # Initialize session state for language
+    # Inicjalizacja stanu sesji (język)
     if "language" not in st.session_state:
         st.session_state.language = "pl"
 
-    # Create language toggle in sidebar
+    # --- SIDEBAR (Pasek boczny) ---
     current_lang = st.session_state.language
     st.sidebar.selectbox(
         get_translations(current_lang)["language"],
         ["pl", "en"],
-        index=0
-        if current_lang == "pl"
-        else 1,  # Set the default selection based on current language
-        format_func=lambda x: get_translations(current_lang)["polish"]
-        if x == "pl"
-        else get_translations(current_lang)["english"],
+        index=0 if current_lang == "pl" else 1,
+        format_func=lambda x: get_translations(current_lang)["polish"] if x == "pl" else get_translations(current_lang)["english"],
         key="language_select",
-        on_change=lambda: st.session_state.update(
-            language=st.session_state.language_select
-        ),
+        on_change=lambda: st.session_state.update(language=st.session_state.language_select),
     )
 
-    # Add usage guide to sidebar
     st.sidebar.markdown("---")
     st.sidebar.header(get_translations(current_lang)["how_to_use"])
     st.sidebar.markdown(get_translations(current_lang)["description"])
@@ -226,124 +198,83 @@ def main():
     st.sidebar.markdown(get_translations(current_lang)["step2"])
     st.sidebar.markdown(get_translations(current_lang)["step3"])
     st.sidebar.divider()
-    st.sidebar.markdown(get_translations(current_lang)["copy_link"])
-    st.sidebar.markdown(get_translations(current_lang)["paste_link"])
+    st.sidebar.caption(get_translations(current_lang)["copy_link"])
+    st.sidebar.caption(get_translations(current_lang)["paste_link"])
 
-    st.title(get_translations(st.session_state.language)["title"])
-
-    # Initialize session state for downloaded file info and temporary directory
+    # --- GŁÓWNE OKNO ---
+    st.title(get_translations(current_lang)["title"])
+    
+    # Zarządzanie stanem plików
     if "downloaded_file_path" not in st.session_state:
         st.session_state.downloaded_file_path = None
     if "downloaded_file_name" not in st.session_state:
         st.session_state.downloaded_file_name = None
-    if "temp_download_dir" not in st.session_state:
-        st.session_state.temp_download_dir = None
-
-    st.header(get_translations(st.session_state.language)["download_audio"])
-    youtube_link = st.text_input(
-        get_translations(st.session_state.language)["youtube_link"],
-        placeholder=get_translations(st.session_state.language)["placeholder"],
-        help=get_translations(st.session_state.language)["help"],
-        key="youtube_link",
-    )
-
-    # Store video info in session state
     if "video_info" not in st.session_state:
         st.session_state.video_info = None
 
-    # Get video info when link changes
-    if youtube_link:
-        if (
-            st.session_state.video_info is None
-            or st.session_state.video_info.get("link") != youtube_link
-        ):
-            # Clear previous download
-            if "downloaded_file_path" in st.session_state:
-                if st.session_state.downloaded_file_path and os.path.exists(
-                    st.session_state.downloaded_file_path
-                ):
-                    shutil.rmtree(
-                        os.path.dirname(st.session_state.downloaded_file_path)
-                    )
-                st.session_state.downloaded_file_path = None
-                st.session_state.downloaded_file_name = None
-                st.session_state.temp_download_dir = None
+    st.header(get_translations(current_lang)["download_audio"])
+    
+    youtube_link = st.text_input(
+        get_translations(current_lang)["youtube_link"],
+        placeholder=get_translations(current_lang)["placeholder"],
+        help=get_translations(current_lang)["help"],
+        key="youtube_link_input"
+    )
 
+    # Logika zmiany linku - resetowanie stanu
+    if youtube_link:
+        if st.session_state.video_info is None or st.session_state.video_info.get("link") != youtube_link:
+             # Resetuj poprzednie pobranie jeśli link się zmienił
+            st.session_state.downloaded_file_path = None
+            st.session_state.video_info = None
+
+        # Pobieranie informacji o wideo (Tytuł + Podgląd)
+        if st.session_state.video_info is None:
             title = get_video_info(youtube_link)
             if title:
                 st.session_state.video_info = {"title": title, "link": youtube_link}
-            else:
-                st.session_state.video_info = None
 
+        # Jeśli mamy info o wideo, pokaż przyciski akcji
         if st.session_state.video_info:
-            if st.button(get_translations(st.session_state.language)["load_video_btn"]):
-                # Clean up previous download if any
-                if st.session_state.temp_download_dir and os.path.exists(
-                    st.session_state.temp_download_dir
-                ):
-                    shutil.rmtree(st.session_state.temp_download_dir)
-                    st.session_state.downloaded_file_path = None
-                    st.session_state.downloaded_file_name = None
-                    st.session_state.temp_download_dir = None
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                # Przycisk "Załaduj / Odśwież"
+                if st.button(get_translations(current_lang)["load_video_btn"]):
+                    # To wymusza ponowne pobranie
+                    st.session_state.downloaded_file_path = None 
+                    file_path, file_name = download_audio(youtube_link)
+                    
+                    if file_path and file_name:
+                        st.session_state.downloaded_file_path = file_path
+                        st.session_state.downloaded_file_name = file_name
+                        st.success(get_translations(current_lang)["success"])
 
-                # Call the download function with the stored title
-                file_path, file_name = download_audio(
-                    youtube_link, st.session_state.video_info["title"]
+            # Wyświetlanie przycisku pobierania, jeśli plik istnieje na serwerze
+            if st.session_state.downloaded_file_path and os.path.exists(st.session_state.downloaded_file_path):
+                with open(st.session_state.downloaded_file_path, "rb") as f:
+                    file_content = f.read()
+                
+                st.download_button(
+                    label=f"{get_translations(current_lang)['download_audio_btn']} 🎵",
+                    data=file_content,
+                    file_name=st.session_state.downloaded_file_name,
+                    mime="audio/mpeg"
                 )
 
-                if file_path and file_name:
-                    # Store the downloaded file path, name, and temp dir in session state
-                    st.session_state.downloaded_file_path = file_path
-                    # Determine the correct file extension from the downloaded file path
-                    _, file_extension = os.path.splitext(file_path)
-                    # Use the original title from yt-dlp info, but ensure a default if not available
-                    display_file_name = file_name if file_name else "downloaded_audio"
-                    st.session_state.downloaded_file_name = f"{display_file_name}{file_extension}"  # Use the actual extension and title
-                    st.session_state.temp_download_dir = os.path.dirname(
-                        file_path
-                    )  # Store the temp directory path
-
-                    # Read the content of the downloaded file
-                    with open(st.session_state.downloaded_file_path, "rb") as f:
-                        file_content = f.read()
-
-                    # Provide the file content to st.download_button
-                    st.download_button(
-                        label=f"{get_translations(st.session_state.language)['download_audio_btn']} {st.session_state.downloaded_file_name}",
-                        data=file_content,
-                        file_name=st.session_state.downloaded_file_name,
-                        # Determine mime type based on file extension
-                        mime={
-                            ".m4a": "audio/mp4",
-                            ".opus": "audio/opus",
-                            ".webm": "audio/webm",
-                            ".mp3": "audio/mpeg",  # Added for completeness if conversion was done
-                        }.get(
-                            os.path.splitext(st.session_state.downloaded_file_name)[
-                                1
-                            ].lower(),
-                            "application/octet-stream",
-                        ),  # Default to generic binary if unknown
-                    )
-                else:
-                    # Reset state if download failed
-                    st.session_state.downloaded_file_path = None
-                    st.session_state.downloaded_file_name = None
-                    st.session_state.temp_download_dir = None
-
-            if st.sidebar.button(
-                get_translations(st.session_state.language)["cleaning_up"]
-            ):
-                if st.session_state.temp_download_dir and os.path.exists(
-                    st.session_state.temp_download_dir
-                ):
-                    shutil.rmtree(
-                        st.session_state.temp_download_dir
-                    )  # Remove the entire temp directory
-                st.session_state.downloaded_file_path = None
-                st.session_state.downloaded_file_name = None
-                st.session_state.temp_download_dir = None
-
+    # Przycisk czyszczenia
+    if st.sidebar.button(get_translations(current_lang)["cleaning_up"]):
+        if st.session_state.downloaded_file_path:
+            # Próba usunięcia folderu tymczasowego
+            try:
+                temp_dir = os.path.dirname(st.session_state.downloaded_file_path)
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except Exception as e:
+                st.error(f"Error: {e}")
+        st.session_state.downloaded_file_path = None
+        st.session_state.downloaded_file_name = None
+        st.session_state.video_info = None
+        st.rerun()
 
 if __name__ == "__main__":
     main()
