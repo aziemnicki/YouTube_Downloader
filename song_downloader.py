@@ -3,136 +3,131 @@ import yt_dlp
 import tempfile
 import shutil
 import os
+import re
 
 # -----------------------------------------------------------------------------
 # 1. KONFIGURACJA I TŁUMACZENIA
 # -----------------------------------------------------------------------------
 
+st.set_page_config(
+    page_title="YouTube Audio Downloader",
+    page_icon="🎵",
+    layout="wide"
+)
+
 def get_translations(lang):
     """Zwraca słownik tłumaczeń w zależności od wybranego języka."""
-    return {
+    translations = {
         "pl": {
             "title": "🎵 Pobierz swoją piosenkę z YouTube 🎵",
-            "download_audio": "📥 Pobierz Audio",
             "youtube_link": "Link do YouTube",
-            "placeholder": "Wklej link do wideo tutaj...",
+            "placeholder": "Wklej link do wideo tutaj (np. https://youtube.com/...)",
             "help": "Obsługiwane są tylko linki do wideo",
-            "download_audio_btn": "📥 Pobierz plik",
+            "load_video_btn": "🔍 Wczytaj wideo",
+            "download_audio_btn": "📥 Pobierz plik MP3",
             "language": "🌐 Język",
             "english": "🇬🇧 Angielski",
             "polish": "🇵🇱 Polski",
             "downloading": "🔄 Przetwarzanie...",
-            "download_complete": "✅ Gotowe:",
+            "download_complete": "✅ Gotowe",
             "video_info_error": "❌ Nie udało się pobrać informacji o wideo:",
             "no_video_found": "🔍 Nie znaleziono pliku wyjściowego",
             "success": "🎉 Plik gotowy do pobrania!",
-            "load_video_btn": "🔄 Wczytaj wideo",
             "cleaning_up": "🗑️ Wyczyść pliki tymczasowe",
             "how_to_use": "❓ Jak używać",
-            "description": "🎵 Prosta aplikacja do pobierania muzyki z YouTube w formacie MP3. 🎵",
+            "description": "Prosta aplikacja do pobierania muzyki z YouTube w formacie MP3.",
             "step1": "1️⃣ Wklej link do wideo w pole tekstowe.",
             "step2": "2️⃣ Kliknij 'Wczytaj wideo' i sprawdź podgląd.",
-            "step3": "3️⃣ Kliknij 'Pobierz plik', aby zapisać MP3 na dysku.",
-            "copy_link": "💡 Skrót: Kopiuj link - Ctrl+C",
-            "paste_link": "💡 Skrót: Wklej link - Ctrl+V",
-            "ffmpeg_error": "⚠️ Błąd: Nie wykryto FFmpeg. Upewnij się, że jest zainstalowany w systemie."
+            "step3": "3️⃣ Rozpocznij pobieranie, a następnie zapisz MP3 na dysku.",
+            "invalid_link": "⚠️ To nie wygląda jak prawidłowy link. Wklej poprawny link do filmu na YouTube.",
+            "ffmpeg_error": "⚠️ Błąd: Nie wykryto FFmpeg."
         },
         "en": {
             "title": "🎵 YouTube Audio Downloader 🎵",
-            "download_audio": "📥 Download Audio",
             "youtube_link": "YouTube Link",
             "placeholder": "Paste YouTube video link here...",
             "help": "Only video links are supported",
-            "download_audio_btn": "📥 Download File",
+            "load_video_btn": "🔍 Load Video",
+            "download_audio_btn": "📥 Download MP3 File",
             "language": "🌐 Language",
             "english": "🇬🇧 English",
             "polish": "🇵🇱 Polish",
             "downloading": "🔄 Processing...",
-            "download_complete": "✅ Complete:",
+            "download_complete": "✅ Complete",
             "video_info_error": "❌ Failed to fetch video info:",
             "no_video_found": "🔍 Output file not found",
             "success": "🎉 File ready for download!",
-            "load_video_btn": "🔄 Load Video",
             "cleaning_up": "🗑️ Clean temp files",
             "how_to_use": "❓ How to use",
-            "description": "🎵 Simple app to download YouTube audio as MP3. 🎵",
+            "description": "Simple app to download YouTube audio as MP3.",
             "step1": "1️⃣ Paste the YouTube link in the text box.",
             "step2": "2️⃣ Click 'Load Video' and check the preview.",
-            "step3": "3️⃣ Click 'Download File' to save the MP3.",
-            "copy_link": "💡 Hint: Copy link - Ctrl+C",
-            "paste_link": "💡 Hint: Paste link - Ctrl+V",
-            "ffmpeg_error": "⚠️ Error: FFmpeg not found. Please ensure it is installed."
-        },
-    }[lang]
+            "step3": "3️⃣ Start downloading, then save the MP3.",
+            "invalid_link": "⚠️ This doesn't look like a valid link.",
+            "ffmpeg_error": "⚠️ Error: FFmpeg not found."
+        }
+    }
+    return translations.get(lang, translations["pl"])
 
 # -----------------------------------------------------------------------------
 # 2. FUNKCJE POMOCNICZE (BACKEND)
 # -----------------------------------------------------------------------------
 
 def get_common_opts():
-    """
-    Zwraca wspólne ustawienia dla yt-dlp.
-    Kluczowe naprawy błędów SSAP i 403 Forbidden znajdują się tutaj.
-    """
+    """Wspólne ustawienia dla yt-dlp. Zabezpieczenia przed banem (403)."""
     return {
         "quiet": True,
+        "no_warnings": True,
         "geo_bypass": True,
         "nocheckcertificate": True,
-        # NAPRAWA BŁĘDU SSAP / SIGNATURE EXTRACTION:
-        # Udajemy klienta Android, który ma lżejsze zabezpieczenia niż wersja Web
+        "sleep_requests": 2,
+        "sleep_interval": 3,
+        "max_sleep_interval": 7,
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "ios"],
-                "player_skip": ["web", "tv"],
+                # Obejście dla błędu HTTP 403 Forbidden
+                "player_client": ["ios,android,web"]
             }
-        },
-        # Udawanie zwykłej przeglądarki w nagłówkach HTTP
-        "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
         }
     }
 
-def get_video_info(link):
-    """Pobiera tytuł i wyświetla podgląd wideo."""
+@st.cache_data(show_spinner=False, ttl=3600)
+def fetch_video_info(link):
+    """Pobiera informacje o wideo z cachem, by nie odpytywać API za każdym razem."""
     ydl_opts = get_common_opts()
-    # Dodatkowe opcje tylko dla pobierania info (bez pliku)
-    ydl_opts.update({
-        "extract_flat": "discard_key", # Szybsze pobieranie info
-    })
-
+    ydl_opts.update({"extract_flat": "discard_key"})
+    
     try:
-        with st.spinner(get_translations(st.session_state.language)["downloading"]):
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(link, download=False)
-                title = info.get("title", "Audio")
-                
-                # Wyświetl podgląd wideo
-                st.video(link, format="video/youtube")
-                return title
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(link, download=False)
+            return {"title": info.get("title", "Audio"), "success": True, "error": None}
     except Exception as e:
-        st.error(f"{get_translations(st.session_state.language)['video_info_error']} {str(e)}")
-        return None
+        return {"title": None, "success": False, "error": str(e)}
 
-def download_audio(link):
+def download_audio_file(link, lang, progress_container):
     """Pobiera audio, konwertuje na mp3 i zwraca ścieżkę."""
+    t = get_translations(lang)
     temp_dir = tempfile.mkdtemp()
     output_template = os.path.join(temp_dir, "%(title)s.%(ext)s")
     
-    # Inicjalizacja paska postępu
-    progress_bar = st.progress(0, text=f"{get_translations(st.session_state.language)['downloading']}...")
+    # Inicjalizacja paska postępu w podanym kontenerze
+    progress_bar = progress_container.progress(0, text=f"{t['downloading']} (0%)")
 
     def progress_hook(d):
         if d["status"] == "downloading":
-            p_str = d.get("_percent_str", "0%").replace("%", "")
-            try:
-                val = float(p_str) / 100
-                progress_bar.progress(min(val, 1.0), text=f"⏳ {d.get('_percent_str', '')}")
-            except ValueError:
-                pass
+            p_str = d.get("_percent_str", "0%").replace("%", "").strip()
+            # Ekstrakcja liczby dla paska postępu
+            match = re.search(r"(\d+\.\d+)", p_str)
+            if match:
+                try:
+                    val = float(match.group(1)) / 100.0
+                    # t['downloading'] ma w sobie emotkę "🔄" - używamy tylko jej
+                    progress_bar.progress(min(max(val, 0.0), 1.0), text=f"{t['downloading']} {p_str}%")
+                except ValueError:
+                    pass
         elif d["status"] == "finished":
-            progress_bar.progress(1.0, text=get_translations(st.session_state.language)['download_complete'])
+            progress_bar.progress(1.0, text=t['download_complete'])
 
-    # Opcje pobierania
     ydl_opts = get_common_opts()
     ydl_opts.update({
         "format": "bestaudio/best",
@@ -149,132 +144,168 @@ def download_audio(link):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([link])
     except Exception as e:
-        st.error(f"Error: {e}")
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        return None, None
+        return None, None, str(e)
 
-    # Szukanie pobranego pliku
+    # Szukanie pobranego pliku mp3
     try:
         files = os.listdir(temp_dir)
-        # Szukamy mp3 (bo taki kodek wymusiliśmy) lub innych audio
         target_files = [f for f in files if f.endswith(('.mp3', '.m4a', '.webm'))]
-        
         if target_files:
-            # Sortujemy po dacie, bierzemy najnowszy
             target_files.sort(key=lambda x: os.path.getmtime(os.path.join(temp_dir, x)), reverse=True)
-            final_path = os.path.join(temp_dir, target_files[0])
-            return final_path, target_files[0]
+            return os.path.join(temp_dir, target_files[0]), target_files[0], None
         else:
-            st.error(get_translations(st.session_state.language)["no_video_found"])
+            return None, None, t["no_video_found"]
+    except Exception as e:
+        return None, None, str(e)
+
+def cleanup_temp_files():
+    """Czyści pliki tymczasowe."""
+    if st.session_state.get("downloaded_file_path"):
+        try:
+            temp_dir = os.path.dirname(st.session_state.downloaded_file_path)
             shutil.rmtree(temp_dir, ignore_errors=True)
-            return None, None
-    except Exception:
-        return None, None
+        except Exception:
+            pass
+    
+    st.session_state.downloaded_file_path = None
+    st.session_state.downloaded_file_name = None
+    st.session_state.current_video_link = None
+    st.session_state.video_title = None
+    st.session_state.file_saved = False
 
 # -----------------------------------------------------------------------------
 # 3. INTERFEJS UŻYTKOWNIKA (FRONTEND)
 # -----------------------------------------------------------------------------
 
-def main():
-    # Inicjalizacja stanu sesji (język)
-    if "language" not in st.session_state:
-        st.session_state.language = "pl"
-
-    # --- SIDEBAR (Pasek boczny) ---
-    current_lang = st.session_state.language
+def render_sidebar(t, lang):
+    """Generuje lewy panel nawigacyjny."""
     st.sidebar.selectbox(
-        get_translations(current_lang)["language"],
+        t["language"],
         ["pl", "en"],
-        index=0 if current_lang == "pl" else 1,
-        format_func=lambda x: get_translations(current_lang)["polish"] if x == "pl" else get_translations(current_lang)["english"],
+        index=0 if lang == "pl" else 1,
+        format_func=lambda x: t["polish"] if x == "pl" else t["english"],
         key="language_select",
-        on_change=lambda: st.session_state.update(language=st.session_state.language_select),
+        on_change=lambda: st.session_state.update(language=st.session_state.language_select)
     )
 
     st.sidebar.markdown("---")
-    st.sidebar.header(get_translations(current_lang)["how_to_use"])
-    st.sidebar.markdown(get_translations(current_lang)["description"])
-    st.sidebar.markdown(get_translations(current_lang)["step1"])
-    st.sidebar.markdown(get_translations(current_lang)["step2"])
-    st.sidebar.markdown(get_translations(current_lang)["step3"])
+    st.sidebar.header(t["how_to_use"])
+    st.sidebar.markdown(t["description"])
+    st.sidebar.markdown(t["step1"])
+    st.sidebar.markdown(t["step2"])
+    st.sidebar.markdown(t["step3"])
     st.sidebar.divider()
-    st.sidebar.caption(get_translations(current_lang)["copy_link"])
-    st.sidebar.caption(get_translations(current_lang)["paste_link"])
 
-    # --- GŁÓWNE OKNO ---
-    st.title(get_translations(current_lang)["title"])
-    
-    # Zarządzanie stanem plików
-    if "downloaded_file_path" not in st.session_state:
-        st.session_state.downloaded_file_path = None
-    if "downloaded_file_name" not in st.session_state:
-        st.session_state.downloaded_file_name = None
-    if "video_info" not in st.session_state:
-        st.session_state.video_info = None
+    if st.sidebar.button(t["cleaning_up"], use_container_width=True):
+        cleanup_temp_files()
+        st.toast("🗑️ Pliki usunięte!", icon="✅")
+        st.rerun()
 
-    st.header(get_translations(current_lang)["download_audio"])
+def render_main_area(t, lang):
+    """Główna przestrzeń aplikacji."""
+    st.title(t["title"])
+    st.markdown("---")
     
     youtube_link = st.text_input(
-        get_translations(current_lang)["youtube_link"],
-        placeholder=get_translations(current_lang)["placeholder"],
-        help=get_translations(current_lang)["help"],
-        key="youtube_link_input"
+        t["youtube_link"],
+        placeholder=t["placeholder"],
+        help=t["help"]
     )
 
-    # Logika zmiany linku - resetowanie stanu
     if youtube_link:
-        if st.session_state.video_info is None or st.session_state.video_info.get("link") != youtube_link:
-             # Resetuj poprzednie pobranie jeśli link się zmienił
-            st.session_state.downloaded_file_path = None
-            st.session_state.video_info = None
-
-        # Pobieranie informacji o wideo (Tytuł + Podgląd)
-        if st.session_state.video_info is None:
-            title = get_video_info(youtube_link)
-            if title:
-                st.session_state.video_info = {"title": title, "link": youtube_link}
-
-        # Jeśli mamy info o wideo, pokaż przyciski akcji
-        if st.session_state.video_info:
-            col1, col2 = st.columns([1, 2])
-            
-            with col1:
-                # Przycisk "Załaduj / Odśwież"
-                if st.button(get_translations(current_lang)["load_video_btn"]):
-                    # To wymusza ponowne pobranie
-                    st.session_state.downloaded_file_path = None 
-                    file_path, file_name = download_audio(youtube_link)
+        is_valid = youtube_link.startswith("http") and ("youtube.com" in youtube_link or "youtu.be" in youtube_link)
+        if not is_valid:
+            st.error(t["invalid_link"])
+        else:
+            # Automatycznie po wklejeniu nowego linku (Enter/utrata fokusu) pobieramy info
+            if st.session_state.current_video_link != youtube_link:
+                cleanup_temp_files() # Czyszczenie starych plików
+                st.session_state.current_video_link = youtube_link
+                
+                with st.spinner("Pobieranie informacji o wideo..."):
+                    info = fetch_video_info(youtube_link)
                     
-                    if file_path and file_name:
-                        st.session_state.downloaded_file_path = file_path
-                        st.session_state.downloaded_file_name = file_name
-                        st.success(get_translations(current_lang)["success"])
+                    if info["success"]:
+                        st.session_state.video_title = info["title"]
+                        st.toast("✅ Informacje pobrane!", icon="ℹ️")
+                    else:
+                        st.error(f"{t['video_info_error']} {info['error']}")
+                        st.session_state.current_video_link = None
 
-            # Wyświetlanie przycisku pobierania, jeśli plik istnieje na serwerze
-            if st.session_state.downloaded_file_path and os.path.exists(st.session_state.downloaded_file_path):
+    # Sekcja dla gotowego wideo (tylko gdy mamy info)
+    if st.session_state.get("current_video_link") and st.session_state.get("video_title"):
+        st.markdown("<br>", unsafe_allow_html=True)
+        col1, col2 = st.columns([1, 1], gap="large")
+        
+        with col1:
+            st.subheader("📺 Podgląd")
+            st.video(st.session_state.current_video_link)
+            
+        with col2:
+            st.subheader(f"🎧 {st.session_state.video_title}")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            file_ready = st.session_state.get("downloaded_file_path") and os.path.exists(st.session_state.downloaded_file_path)
+            
+            # Krok 1: Wideo załadowane, czekamy na decyzję o pobraniu
+            if not file_ready:
+                progress_container = st.empty()
+                if st.button("🚀 Rozpocznij pobieranie MP3", use_container_width=True, type="primary"):
+                    with st.spinner(t["downloading"]):
+                        file_path, file_name, err = download_audio_file(
+                            st.session_state.current_video_link, 
+                            lang, 
+                            progress_container
+                        )
+                        
+                        if file_path and not err:
+                            st.session_state.downloaded_file_path = file_path
+                            st.session_state.downloaded_file_name = file_name
+                            st.toast(t["success"], icon="🎉")
+                            st.rerun() # Odświeżenie aplikacji, by wyświetlić przycisk zapisu
+                        else:
+                            st.error(f"Error: {err}")
+            
+            # Krok 2: Plik MP3 gotowy do zapisania na dysku
+            else:
+                st.success(t["success"])
                 with open(st.session_state.downloaded_file_path, "rb") as f:
                     file_content = f.read()
                 
                 st.download_button(
-                    label=f"{get_translations(current_lang)['download_audio_btn']} 🎵",
+                    label=f"💾 Zapisz plik na dysku",
                     data=file_content,
                     file_name=st.session_state.downloaded_file_name,
-                    mime="audio/mpeg"
+                    mime="audio/mpeg",
+                    use_container_width=True,
+                    type="primary",
+                    disabled=st.session_state.get("file_saved", False),
+                    on_click=lambda: st.session_state.update(file_saved=True)
                 )
 
-    # Przycisk czyszczenia
-    if st.sidebar.button(get_translations(current_lang)["cleaning_up"]):
-        if st.session_state.downloaded_file_path:
-            # Próba usunięcia folderu tymczasowego
-            try:
-                temp_dir = os.path.dirname(st.session_state.downloaded_file_path)
-                shutil.rmtree(temp_dir, ignore_errors=True)
-            except Exception as e:
-                st.error(f"Error: {e}")
-        st.session_state.downloaded_file_path = None
-        st.session_state.downloaded_file_name = None
-        st.session_state.video_info = None
-        st.rerun()
+# -----------------------------------------------------------------------------
+# 4. START APLIKACJI
+# -----------------------------------------------------------------------------
+
+def main():
+    # Inicjalizacja kluczowych zmiennych w session_state
+    defaults = {
+        "language": "pl",
+        "downloaded_file_path": None,
+        "downloaded_file_name": None,
+        "current_video_link": None,
+        "video_title": None,
+        "file_saved": False
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    lang = st.session_state.language
+    t = get_translations(lang)
+
+    render_sidebar(t, lang)
+    render_main_area(t, lang)
 
 if __name__ == "__main__":
     main()
