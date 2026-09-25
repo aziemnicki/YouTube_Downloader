@@ -10,11 +10,12 @@ You can use the application online at: [https://youtubesongdownloader.streamlit.
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.11 or higher
 - pip or uv (Python package installer)
 - yt-dlp (YouTube downloader)
 - streamlit (Python web framework)
 - ffmpeg (required for video processing)
+- Node.js 22+ or Deno (required by yt-dlp for YouTube JavaScript challenges)
 
 ### Installation Steps
 
@@ -51,9 +52,11 @@ The application will start and be available at `http://localhost:8501` by defaul
 1. Open the application in your web browser
 2. Select your preferred language (Polish or English)
 3. Follow the 3 simple steps in the sidebar:
-   - Paste YouTube video link in the text field
-   - Click the 'Load Video' button and wait few seconds
-   - Click download button to download the audio file
+   - Paste a YouTube video link, including a `watch?v=...&list=...` link from a playlist
+   - Check the video preview and click the MP3 download button
+   - Save the resulting MP3 to your device
+
+Only the video identified by `v` is downloaded. Playlist-only links are not supported.
 
 ## 🛠️ Features
 
@@ -62,7 +65,7 @@ The application will start and be available at `http://localhost:8501` by defaul
 - 🔄 Progress tracking during downloads
 - 🗑️ Automatic cleanup of temporary files
 - 🔍 Error handling and user feedback
-- 🎶 Support for multiple audio formats
+- 🎶 MP3 conversion using FFmpeg
 
 ## 🤝 Contributing
 
